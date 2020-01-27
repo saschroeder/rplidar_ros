@@ -52,6 +52,7 @@ void publish_scan(ros::Publisher *pub,
                   size_t node_count, ros::Time start,
                   double scan_time, bool inverted,
                   float angle_min, float angle_max,
+                  float min_distance,
                   float max_distance,
                   std::string frame_id)
 {
@@ -75,8 +76,8 @@ void publish_scan(ros::Publisher *pub,
 
     scan_msg.scan_time = scan_time;
     scan_msg.time_increment = scan_time / (double)(node_count-1);
-    scan_msg.range_min = 0.15;
-    scan_msg.range_max = max_distance;//8.0;
+    scan_msg.range_min = min_distance;
+    scan_msg.range_max = max_distance;
 
     scan_msg.intensities.resize(node_count);
     scan_msg.ranges.resize(node_count);
@@ -185,6 +186,8 @@ static float getAngle(const rplidar_response_measurement_node_hq_t& node)
 int main(int argc, char * argv[]) {
     ros::init(argc, argv, "rplidar_node");
     
+    float min_distance;
+    float max_distance;
     std::string channel_type;
     std::string tcp_ip;
     std::string serial_port;
@@ -193,12 +196,13 @@ int main(int argc, char * argv[]) {
     std::string frame_id;
     bool inverted = false;
     bool angle_compensate = true;
-    float max_distance = 8.0;
     int angle_compensate_multiple = 1;//it stand of angle compensate at per 1 degree
     std::string scan_mode;
     ros::NodeHandle nh;
     ros::Publisher scan_pub = nh.advertise<sensor_msgs::LaserScan>("scan", 1000);
     ros::NodeHandle nh_private("~");
+    nh_private.param<float>("min_range", min_distance, 0.15);
+    nh_private.param<float>("max_range", max_distance, 8.0);
     nh_private.param<std::string>("channel_type", channel_type, "serial");
     nh_private.param<std::string>("tcp_ip", tcp_ip, "192.168.0.7"); 
     nh_private.param<int>("tcp_port", tcp_port, 20108);
@@ -348,7 +352,7 @@ int main(int argc, char * argv[]) {
   
                     publish_scan(&scan_pub, angle_compensate_nodes, angle_compensate_nodes_count,
                              start_scan_time, scan_duration, inverted,
-                             angle_min, angle_max, max_distance,
+                             angle_min, angle_max, min_distance, max_distance,
                              frame_id);
                 } else {
                     int start_node = 0, end_node = 0;
@@ -365,7 +369,7 @@ int main(int argc, char * argv[]) {
 
                     publish_scan(&scan_pub, &nodes[start_node], end_node-start_node +1,
                              start_scan_time, scan_duration, inverted,
-                             angle_min, angle_max, max_distance,
+                             angle_min, angle_max, min_distance, max_distance,
                              frame_id);
                }
             } else if (op_result == RESULT_OPERATION_FAIL) {
@@ -374,7 +378,7 @@ int main(int argc, char * argv[]) {
                 float angle_max = DEG2RAD(359.0f);
                 publish_scan(&scan_pub, nodes, count,
                              start_scan_time, scan_duration, inverted,
-                             angle_min, angle_max, max_distance,
+                             angle_min, angle_max, min_distance, max_distance,
                              frame_id);
             }
         }
